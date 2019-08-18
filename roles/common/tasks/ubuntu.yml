@@ -24,13 +24,9 @@
       when: reboot_required is defined and reboot_required.stdout == 'required'
       ignore_errors: true
 
-    - name: Wait until SSH becomes ready...
-      local_action:
-        module: wait_for
-        port: 22
-        host: "{{ inventory_hostname }}"
-        search_regex: OpenSSH
-        delay: 10
+    - name: Wait until the server becomes ready...
+      wait_for_connection:
+        delay: 20
         timeout: 320
       when: reboot_required is defined and reboot_required.stdout == 'required'
       become: false
@@ -65,18 +61,21 @@
 - meta: flush_handlers
 
 - name: Check apparmor support
-  shell: apparmor_status
+  command: apparmor_status
   ignore_errors: yes
+  changed_when: false
   register: apparmor_status
 
-- set_fact:
+- name: Set fact if apparmor enabled
+  set_fact:
     apparmor_enabled: true
   when: '"profiles are in enforce mode" in apparmor_status.stdout'
 
 - name: Gather additional facts
   import_tasks: facts.yml
 
-- set_fact:
+- name: Set OS specific facts
+  set_fact:
     tools:
       - git
       - screen

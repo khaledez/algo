@@ -1,4 +1,4 @@
-conn ikev2-{{ IP_subject_alt_name }}
+conn algovpn-{{ IP_subject_alt_name }}
     fragmentation=yes
     rekey=no
     dpdaction=clear
@@ -6,17 +6,12 @@ conn ikev2-{{ IP_subject_alt_name }}
     compress=no
     dpddelay=35s
 
-{% if algo_windows %}
-    ike={{ ciphers.compat.ike }}
-    esp={{ ciphers.compat.esp }}
-{% else %}
     ike={{ ciphers.defaults.ike }}
     esp={{ ciphers.defaults.esp }}
-{% endif %}
 
     right={{ IP_subject_alt_name }}
     rightid={{ IP_subject_alt_name }}
-    rightsubnet=0.0.0.0/0
+    rightsubnet={{ rightsubnet | default('0.0.0.0/0') }}
     rightauth=pubkey
 
     leftsourceip=%config

@@ -18,7 +18,7 @@ First of all, check [this](https://github.com/trailofbits/algo#features) and ens
      * [Windows: The value of parameter linuxConfiguration.ssh.publicKeys.keyData is invalid](#windows-the-value-of-parameter-linuxconfigurationsshpublickeyskeydata-is-invalid)
      * [Docker: Failed to connect to the host via ssh](#docker-failed-to-connect-to-the-host-via-ssh)
      * [Wireguard: Unable to find 'configs/...' in expected paths](#wireguard-unable-to-find-configs-in-expected-paths)
-     * [Ubuntu Error: "unable to write 'random state" when generating CA password](#ubuntu-error-unable-to-write-random-state-when-generating-ca-password")
+     * [Ubuntu Error: "unable to write 'random state'" when generating CA password](#ubuntu-error-unable-to-write-random-state-when-generating-ca-password)
   * [Connection Problems](#connection-problems)
      * [I'm blocked or get CAPTCHAs when I access certain websites](#im-blocked-or-get-captchas-when-i-access-certain-websites)
      * [I want to change the list of trusted Wifi networks on my Apple device](#i-want-to-change-the-list-of-trusted-wifi-networks-on-my-apple-device)
@@ -28,8 +28,8 @@ First of all, check [this](https://github.com/trailofbits/algo#features) and ens
      * [I can't get Network Manager to connect to the Algo server](#i-cant-get-network-manager-to-connect-to-the-algo-server)
      * [Various websites appear to be offline through the VPN](#various-websites-appear-to-be-offline-through-the-vpn)
      * [Clients appear stuck in a reconnection loop](#clients-appear-stuck-in-a-reconnection-loop)
-     * ["Error 809" or IKE_AUTH requests that never make it to the server](#error-809-or-ike_auth-requests-that-never-make-it-to-the-server)
-     * [Windows: Parameter is incorrect](#windows-parameter-is-incorrect)
+     * [Wireguard: clients can connect on Wifi but not LTE](#wireguard-clients-can-connect-on-wifi-but-not-lte)
+     * [IPsec: Difficulty connecting through router](#ipsec-difficulty-connecting-through-router)
   * [I have a problem not covered here](#i-have-a-problem-not-covered-here)
 
 ## Installation Problems
@@ -153,7 +153,9 @@ You need to reset the permissions on your `.ssh` directory. Run `chmod 700 /home
 
 ### The region you want is not available
 
-You want to install Algo to a specific region in a cloud provider, but that region is not available in the list given by the installer. In that case, you should [file an issue](https://github.com/trailofbits/algo/issues/new). Cloud providers add new regions on a regular basis and we don't always keep up. File an issue and give us information about what region is missing and we'll add it.
+Algo downloads the regions from the supported cloud providers (other than Microsoft Azure) listed in the first menu using APIs. If the region you want isn't available, the cloud provider has probably taken it offline for some reason. You should investigate further with your cloud provider.
+
+If there's a specific region you want to install to in Microsoft Azure that isn't available, you should [file an issue](https://github.com/trailofbits/algo/issues/new), give us information about what region is missing, and we'll add it.
 
 ### AWS: SSH permission denied with an ECDSA key
 
@@ -225,7 +227,7 @@ You tried to deploy Algo from Windows and you received an error like this one:
 
 ```
 TASK [cloud-azure : Create an instance].
-fatal: [localhost]: FAILED! => {"changed": false, 
+fatal: [localhost]: FAILED! => {"changed": false,
 "msg": "Error creating or updating virtual machine AlgoVPN - Azure Error:
 InvalidParameter\n
 Message: The value of parameter linuxConfiguration.ssh.publicKeys.keyData is invalid.\n
@@ -239,7 +241,7 @@ This is related to [the chmod issue](https://github.com/Microsoft/WSL/issues/81)
 You tried to deploy Algo from Docker and you received an error like this one:
 
 ```
-Failed to connect to the host via ssh: 
+Failed to connect to the host via ssh:
 Warning: Permanently added 'xxx.xxx.xxx.xxx' (ECDSA) to the list of known hosts.\r\n
 Control socket connect(/root/.ansible/cp/6d9d22e981): Connection refused\r\n
 Failed to connect to new control master\r\n
@@ -261,7 +263,7 @@ TASK [wireguard : Generate public keys] ****************************************
 [WARNING]: Unable to find 'configs/xxx.xxx.xxx.xxx/wireguard//private/dan' in expected paths.
 
 fatal: [localhost]: FAILED! => {"msg": "An unhandled exception occurred while running the lookup plugin 'file'. Error was a <class 'ansible.errors.AnsibleError'>, original message: could not locate file in lookup: configs/xxx.xxx.xxx.xxx/wireguard//private/dan"}
-``` 
+```
 This error is usually hit when using the local install option on a server that isn't Ubuntu 18.04. You should upgrade your server to Ubuntu 18.04. If this doesn't work, try removing `*.lock` files at /etc/wireguard/ as follows:
 
 ```ssh
@@ -269,7 +271,7 @@ sudo rm -rf /etc/wireguard/*.lock
 ```
 Then immediately re-run `./algo`.
 
-### Ubuntu Error: "unable to write 'random state" when generating CA password
+### Ubuntu Error: "unable to write 'random state'" when generating CA password
 
 When running Algo, you received an error like this:
 
@@ -406,11 +408,11 @@ Example command:
 sed -i -e 's/#*.dos_protection = yes/dos_protection = no/' /etc/strongswan.d/charon.conf && ipsec restart
 ```
 
-### "Error 809" or IKE_AUTH requests that never make it to the server
+### WireGuard: Clients can connect on Wifi but not LTE
 
-On Windows, this issue may manifest with an error message that says "The network connection between your computer and the VPN server could not be established because the remote server is not responding... This is Error 809." On other operating systems, you may try to debug the issue by capturing packets with tcpdump and notice that, while IKE_SA_INIT request and responses are exchanged between the client and server, IKE_AUTH requests never make it to the server.
+Certain cloud providers (like AWS Lightsail) don't assign an IPv6 address to your server, but certain cellular carriers (e.g. T-Mobile in the United States, [EE](https://community.ee.co.uk/t5/4G-and-mobile-data/IPv4-VPN-Connectivity/td-p/757881) in the United Kingdom) operate an IPv6-only network. This somehow leads to the Wireguard app not being able to make a connection when transitioning to cell service. Go to the Wireguard app on the device when you're having problems with cell connectivity and select "Export log file" or similar option. If you see a long string of error messages like "`Failed to send data packet write udp6 [::]:49727->[2607:7700:0:2a:0:1:354:40ae]:51820: sendto: no route to host` then you might be having this problem.
 
-It is possible that the IKE_AUTH payload is too big to fit in a single IP datagram, and so is fragmented. Many consumer routers and cable modems ship with a feature that blocks "fragmented IP packets." Try logging into your router and disabling any firewall settings related to blocking or dropping fragmented IP packets. For more information, see [Issue #305](https://github.com/trailofbits/algo/issues/305).
+Manually disconnecting and then reconnecting should restore your connection. To solve this, you need to either "force IPv4 connection" if available on your phone, or install an IPv4 APN, which might be available from your carrier tech support. T-mobile's is available [for iOS here under "iOS IPv4/IPv6 fix"](https://www.reddit.com/r/tmobile/wiki/index), and [here is a walkthrough for Android phones](https://www.myopenrouter.com/article/vpn-connections-not-working-t-mobile-heres-how-fix).
 
 ### Error: name 'basestring' is not defined
 
@@ -438,28 +440,17 @@ Then rerun the dependency installation explicitly using python 2.7
 python2.7 -m virtualenv --python=`which python2.7` env && source env/bin/activate && python2.7 -m pip install -U pip && python2.7 -m pip install -r requirements.txt
 ```
 
-### Windows: Parameter is incorrect
+### IPsec: Difficulty connecting through router
 
-The problem may happen if you recently moved to a new server, where you have Algo VPN.
+Some routers treat IPsec connections specially because older versions of IPsec did not work properly through [NAT](https://en.wikipedia.org/wiki/Network_address_translation). If you're having problems connecting to your AlgoVPN through a specific router using IPsec you might need to change some settings on the router.
 
-1. Clear the Networking caches:
-	- Run CMD (click windows start menu, type 'cmd', right click on 'Command Prompt' and select "Run as Administrator").
-	- Type the commands below:
-	```
-	netsh int ip reset
-	netsh int ipv6 reset
-	netsh winsock reset
-	```
+#### Change the "VPN Passthrough" settings
 
-3. Restart your computer
-4. Reset Device Manager adaptors:
-	- Open Device Manager
-	- Find Network Adapters
-	- Uninstall WAN Miniport drivers (IKEv2, IP, IPv6, etc)
-	- Click Action > Scan for hardware changes
-	- The adapters you just uninstalled should come back
+If your router has a setting called something like "VPN Passthrough" or "IPsec Passthrough" try changing the setting to a different value.
 
-The VPN connection should work again
+#### Change the default pfSense NAT rules
+
+If your router runs [pfSense](https://www.pfsense.org) and a single IPsec client can connect but you have issues when using multiple clients, you'll need to change the **Outbound NAT** mode to **Manual Outbound NAT** and disable the rule that specifies **Static Port** for IKE (UDP port 500). See [Outbound NAT](https://docs.netgate.com/pfsense/en/latest/book/nat/outbound-nat.html#outbound-nat) in the [pfSense Book](https://docs.netgate.com/pfsense/en/latest/book).
 
 ## I have a problem not covered here
 
